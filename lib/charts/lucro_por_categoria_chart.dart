@@ -1,16 +1,25 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/produto.dart';
+import '../theme/theme.dart';
 import '../utils/chart_utils.dart';
+import '../utils/formatters.dart';
+import '../widgets/ui/chart_card.dart';
+import '../widgets/ui/empty_state.dart';
 
+/// Lucro agregado por categoria.
+///
+/// Barras chapadas em tons da rampa, sem gradiente: numa escala de cinza o
+/// degradê destruiria a comparação entre colunas.
 class LucroPorCategoriaChart extends StatelessWidget {
   const LucroPorCategoriaChart({super.key});
 
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<Produto>('produtos');
+    final t = context.tokens;
 
     return ValueListenableBuilder(
       valueListenable: box.listenable(),
@@ -18,15 +27,20 @@ class LucroPorCategoriaChart extends StatelessWidget {
         final produtos = box.values.toList();
 
         if (produtos.isEmpty) {
-          return const Text('Sem dados por categoria');
+          return const ChartCard(
+            title: 'Lucro por categoria',
+            child: EmptyState(
+              icon: Icons.bar_chart_outlined,
+              title: 'Sem dados por categoria',
+            ),
+          );
         }
 
         /// 🔹 AGRUPA O LUCRO POR CATEGORIA
         final Map<String, double> lucroPorCategoria = {};
 
         for (final p in produtos) {
-          final lucro =
-              (p.precoVenda - p.precoCusto) * p.quantidade;
+          final lucro = (p.precoVenda - p.precoCusto) * p.quantidade;
 
           lucroPorCategoria[p.categoria] =
               (lucroPorCategoria[p.categoria] ?? 0) + lucro;
@@ -39,140 +53,106 @@ class LucroPorCategoriaChart extends StatelessWidget {
           valores.reduce((a, b) => a > b ? a : b),
         );
 
-        final List<List<Color>> gradients = [
-          [const Color(0xFF1565C0), const Color(0xFF42A5F5)],
-
-
-        ];
-
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.withOpacity(0.12),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// 🔹 TÍTULO DO CARD
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Lucro por categoria',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+        return ChartCard(
+          title: 'Lucro por categoria',
+          subtitle: '${categorias.length} '
+              '${categorias.length == 1 ? "categoria" : "categorias"}',
+          child: BarChart(
+            BarChartData(
+              maxY: maxY,
+              alignment: BarChartAlignment.spaceAround,
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  getTooltipColor: (_) => t.surfaceInverse,
+                  tooltipBorderRadius: AppRadii.control,
+                  getTooltipItem: (group, _, rod, __) => BarTooltipItem(
+                    formatBRL(rod.toY),
+                    context.text.bodySmall!.copyWith(color: t.textInverse),
+                  ),
                 ),
-
-                const SizedBox(height: 16),
-
-                /// 🔹 GRÁFICO
-                SizedBox(
-                  height: 240,
-                  child: BarChart(
-                    BarChartData(
-                      maxY: maxY,
-                      alignment: BarChartAlignment.spaceAround,
-                      barTouchData: BarTouchData(enabled: false),
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: maxY / 5,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: Colors.grey.withOpacity(0.15),
-                            strokeWidth: 1,
-                            dashArray: [4, 4],
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: maxY / 5,
-                            reservedSize: 55,
-                            getTitlesWidget: (value, _) => Text(
-                              'R\$ ${value.toInt()}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black54,
-                              ),
-                            ),
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, _) {
-                              final index = value.toInt();
-                              if (index < categorias.length) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    categorias[index],
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
-                          ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: maxY / 4,
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: t.chartGrid,
+                  strokeWidth: AppBorders.hairline,
+                ),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: maxY / 4,
+                    reservedSize: 56,
+                    getTitlesWidget: (value, _) => Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xs),
+                      child: Text(
+                        formatCompactBRL(value),
+                        textAlign: TextAlign.right,
+                        style: context.text.bodySmall!.copyWith(
+                          color: t.chartAxisLabel,
                         ),
                       ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: List.generate(categorias.length, (index) {
-                        final lucro =
-                            lucroPorCategoria[categorias[index]]!;
-                        final gradient =
-                            gradients[index % gradients.length];
-
-                        return BarChartGroupData(
-                          x: index,
-                          barRods: [
-                            BarChartRodData(
-                              toY: lucro,
-                              width: 22,
-                              borderRadius: BorderRadius.circular(6),
-                              gradient: LinearGradient(
-                                colors: gradient,
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
                     ),
                   ),
                 ),
-              ],
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 34,
+                    getTitlesWidget: (value, _) {
+                      final index = value.toInt();
+                      if (index < categorias.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.sm),
+                          child: Text(
+                            categorias[index],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.text.bodySmall!.copyWith(
+                              color: t.chartAxisLabel,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              barGroups: List.generate(categorias.length, (index) {
+                final lucro = lucroPorCategoria[categorias[index]]!;
+
+                return BarChartGroupData(
+                  x: index,
+                  barRods: <BarChartRodData>[
+                    BarChartRodData(
+                      toY: lucro,
+                      width: AppSpacing.lg,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppRadii.sm / 2),
+                      ),
+                      color: t.seriesAt(index),
+                      // Trilho de fundo: dá referência de escala sem grade densa.
+                      backDrawRodData: BackgroundBarChartRodData(
+                        show: true,
+                        toY: maxY,
+                        color: t.surfaceMuted,
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ),
           ),
         );

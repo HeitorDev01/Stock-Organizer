@@ -1,16 +1,25 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/produto.dart';
+import '../theme/theme.dart';
 import '../utils/chart_utils.dart';
+import '../utils/formatters.dart';
+import '../widgets/ui/chart_card.dart';
+import '../widgets/ui/empty_state.dart';
 
+/// Projeção de lucro para os próximos 6 meses.
+///
+/// Traço de 1.5px, sem gradiente colorido e sem grade vertical — a linha é a
+/// informação, tudo o mais recua.
 class EvolucaoLucroChart extends StatelessWidget {
   const EvolucaoLucroChart({super.key});
 
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<Produto>('produtos');
+    final t = context.tokens;
 
     return ValueListenableBuilder(
       valueListenable: box.listenable(),
@@ -18,14 +27,20 @@ class EvolucaoLucroChart extends StatelessWidget {
         final produtos = box.values.toList();
 
         if (produtos.isEmpty) {
-          return const Text('Sem dados para projeção');
+          return const ChartCard(
+            title: 'Projeção de lucro',
+            subtitle: 'Próximos 6 meses',
+            child: EmptyState(
+              icon: Icons.show_chart_outlined,
+              title: 'Sem dados para projeção',
+            ),
+          );
         }
 
         /// 🔹 LUCRO TOTAL ATUAL
         final lucroAtual = produtos.fold<double>(
           0,
-          (total, p) =>
-              total + ((p.precoVenda - p.precoCusto) * p.quantidade),
+          (total, p) => total + ((p.precoVenda - p.precoCusto) * p.quantidade),
         );
 
         /// 🔹 SIMULAÇÃO DE CRESCIMENTO (6 meses)
@@ -38,143 +53,123 @@ class EvolucaoLucroChart extends StatelessWidget {
           projecao.reduce((a, b) => a > b ? a : b),
         );
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.grey.withOpacity(0.12),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
+        final DateTime now = DateTime.now();
+
+        return ChartCard(
+          title: 'Projeção de lucro',
+          subtitle: 'Cenário de crescimento de 15% ao mês',
+          trailing: Text(
+            formatCompactBRL(projecao.last),
+            style: context.text.titleLarge!.copyWith(color: t.textPrimary),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                /// 🔹 TÍTULO
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      'Projeção de lucro',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+          child: LineChart(
+            LineChartData(
+              minY: 0,
+              maxY: maxY,
+              gridData: FlGridData(
+                show: true,
+                horizontalInterval: maxY / 4,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: t.chartGrid,
+                  strokeWidth: AppBorders.hairline,
+                ),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: maxY / 4,
+                    reservedSize: 56,
+                    getTitlesWidget: (value, _) => Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.xs),
+                      child: Text(
+                        formatCompactBRL(value),
+                        textAlign: TextAlign.right,
+                        style: context.text.bodySmall!.copyWith(
+                          color: t.chartAxisLabel,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-
-                const SizedBox(height: 16),
-
-                /// 🔹 GRÁFICO
-                SizedBox(
-                  height: 240,
-                  child: LineChart(
-                    LineChartData(
-                      minY: 0,
-                      maxY: maxY,
-                      gridData: FlGridData(
-                        show: true,
-                        horizontalInterval: maxY / 5,
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: Colors.grey.withOpacity(0.15),
-                            strokeWidth: 1,
-                            dashArray: [4, 4],
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: maxY / 5,
-                            reservedSize: 55,
-                            getTitlesWidget: (value, _) => Text(
-                              'R\$ ${value.toInt()}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.black54,
-                              ),
-                            ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 1,
+                    reservedSize: 32,
+                    getTitlesWidget: (value, _) {
+                      final DateTime month = DateTime(
+                        now.year,
+                        now.month + value.toInt(),
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.sm),
+                        child: Text(
+                          formatMonthShort(month),
+                          style: context.text.bodySmall!.copyWith(
+                            color: t.chartAxisLabel,
                           ),
                         ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: 1,
-                            getTitlesWidget: (value, _) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Text(
-                                  'Mês ${value.toInt() + 1}',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => t.surfaceInverse,
+                  tooltipBorderRadius: AppRadii.control,
+                  tooltipPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  getTooltipItems: (List<LineBarSpot> spots) => spots
+                      .map(
+                        (LineBarSpot s) => LineTooltipItem(
+                          formatBRL(s.y),
+                          context.text.bodySmall!
+                              .copyWith(color: t.textInverse),
                         ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: List.generate(
-                            projecao.length,
-                            (index) => FlSpot(
-                              index.toDouble(),
-                              projecao[index],
-                            ),
-                          ),
-                          isCurved: true,
-                          barWidth: 3,
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF1565C0), Color(0xFF42A5F5)],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, _, __, ___) {
-                              return FlDotCirclePainter(
-                                radius: 3,
-                                color: Colors.white,
-                                strokeWidth: 2,
-                                strokeColor: const Color(0xFF1565C0),
-                              );
-                            },
-                          ),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF1565C0).withOpacity(0.3),
-                                Colors.transparent,
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              lineBarsData: <LineChartBarData>[
+                LineChartBarData(
+                  spots: List.generate(
+                    projecao.length,
+                    (index) => FlSpot(index.toDouble(), projecao[index]),
+                  ),
+                  isCurved: true,
+                  curveSmoothness: 0.28,
+                  barWidth: AppBorders.focus,
+                  color: t.chartLine,
+                  dotData: FlDotData(
+                    show: true,
+                    getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(
+                      radius: 3,
+                      color: t.chartDotFill,
+                      strokeWidth: AppBorders.focus,
+                      strokeColor: t.chartLine,
+                    ),
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        t.chartFill.withValues(alpha: 0.14),
+                        t.chartFill.withValues(alpha: 0),
                       ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
                   ),
                 ),
