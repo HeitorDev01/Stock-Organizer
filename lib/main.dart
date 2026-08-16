@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'data/dados_exemplo.dart';
 import 'models/produto.dart';
 import 'navigation/app_shell.dart';
 import 'theme/theme.dart';
@@ -15,11 +16,16 @@ void main() async {
   Hive.registerAdapter(ProdutoAdapter());
 
   // Abre a box
-  await Hive.openBox<Produto>('produtos');
+  final Box<Produto> produtos = await Hive.openBox<Produto>('produtos');
 
-  await Hive.openBox('settings');
+  final Box settings = await Hive.openBox('settings');
 
-  runApp(MyApp(themeController: ThemeController(Hive.box('settings'))));
+  // Primeira execução abre com um estoque de exemplo, para o painel e os
+  // gráficos já nascerem preenchidos. Só age com a box vazia — ver
+  // `semearExemploSeNecessario`.
+  await semearExemploSeNecessario(produtos, settings);
+
+  runApp(MyApp(themeController: ThemeController(settings)));
 }
 
 class MyApp extends StatelessWidget {

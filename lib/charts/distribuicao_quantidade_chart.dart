@@ -45,6 +45,7 @@ class DistribuicaoQuantidadeChart extends StatelessWidget {
           (int i) => ChartLegendEntry(
             label: top[i].nome,
             color: t.seriesAt(i),
+            value: '${formatInt(top[i].quantidade)} un',
           ),
         ),
       ),
@@ -53,9 +54,12 @@ class DistribuicaoQuantidadeChart extends StatelessWidget {
         children: <Widget>[
           PieChart(
             PieChartData(
+              // 2px de respiro entre fatias: separa matizes vizinhos sem
+              // precisar de contorno.
               sectionsSpace: 2,
               centerSpaceRadius: AppSpacing.giant - AppSpacing.xl,
               borderData: FlBorderData(show: false),
+              pieTouchData: PieTouchData(enabled: true),
               sections: List<PieChartSectionData>.generate(top.length, (int i) {
                 return PieChartSectionData(
                   color: t.seriesAt(i),

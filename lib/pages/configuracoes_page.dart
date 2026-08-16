@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../data/dados_exemplo.dart';
+import '../models/produto.dart';
 import '../theme/theme.dart';
 import '../widgets/ui/app_card.dart';
 import '../widgets/ui/responsive.dart';
@@ -38,6 +40,73 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
 
   ThemeController get _themeController => AppThemeScope.of(context);
 
+  /// Ambas as ações apagam o estoque inteiro, então nenhuma acontece sem
+  /// confirmação — mesmo padrão de diálogo da exclusão de produto.
+  Future<void> _confirmarRestauracao() async {
+    final bool ok = await _confirmar(
+      titulo: 'Restaurar dados de exemplo?',
+      mensagem: 'Os produtos cadastrados hoje serão substituídos pelo '
+          'catálogo de demonstração. Essa ação não pode ser desfeita.',
+      acao: 'Restaurar',
+    );
+    if (!ok || !mounted) return;
+
+    await restaurarExemplo(Hive.box<Produto>('produtos'));
+    _avisar('Estoque de exemplo restaurado.');
+  }
+
+  Future<void> _confirmarLimpeza() async {
+    final bool ok = await _confirmar(
+      titulo: 'Limpar todo o estoque?',
+      mensagem: 'Todos os produtos serão removidos e os gráficos ficarão '
+          'vazios. Essa ação não pode ser desfeita.',
+      acao: 'Limpar',
+    );
+    if (!ok || !mounted) return;
+
+    await Hive.box<Produto>('produtos').clear();
+    _avisar('Estoque limpo.');
+  }
+
+  Future<bool> _confirmar({
+    required String titulo,
+    required String mensagem,
+    required String acao,
+  }) async {
+    final bool? resposta = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        title: Text(titulo),
+        content: Text(mensagem),
+        actionsPadding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          0,
+          AppSpacing.xl,
+          AppSpacing.xl,
+        ),
+        actions: <Widget>[
+          OutlinedButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(acao),
+          ),
+        ],
+      ),
+    );
+    return resposta ?? false;
+  }
+
+  void _avisar(String mensagem) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(mensagem)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -66,8 +135,9 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
-                        'A paleta é monocromática nos dois modos — muda o '
-                        'sentido do contraste, não a cor.',
+                        'A interface é monocromática nos dois modos; a cor '
+                        'fica reservada às séries dos gráficos, e cada modo '
+                        'tem sua própria versão dos matizes.',
                         style: context.text.bodySmall!.copyWith(
                           color: context.tokens.textTertiary,
                         ),
@@ -124,6 +194,59 @@ class _ConfiguracoesPageState extends State<ConfiguracoesPage> {
                     ),
                     onChanged: (String value) =>
                         _settingsBox.put('userName', value.trim()),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxxl),
+
+            const SectionHeader(
+              eyebrow: 'Dados',
+              title: 'Estoque de demonstração',
+            ),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    'Catálogo de exemplo',
+                    style: context.text.cardTitle.copyWith(
+                      color: context.tokens.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    'Doze produtos em seis categorias, com três itens abaixo '
+                    'do estoque mínimo — o suficiente para ver todos os '
+                    'gráficos preenchidos. Restaurar substitui o estoque '
+                    'atual.',
+                    style: context.text.bodySmall!.copyWith(
+                      color: context.tokens.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        onPressed: _confirmarRestauracao,
+                        icon: const Icon(
+                          Icons.auto_awesome_outlined,
+                          size: AppIconSize.sm,
+                        ),
+                        label: const Text('Restaurar exemplo'),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      TextButton.icon(
+                        onPressed: _confirmarLimpeza,
+                        icon: const Icon(
+                          Icons.delete_sweep_outlined,
+                          size: AppIconSize.sm,
+                        ),
+                        label: const Text('Limpar estoque'),
+                      ),
+                    ],
                   ),
                 ],
               ),

@@ -80,18 +80,31 @@ class ChartCard extends StatelessWidget {
   }
 }
 
-/// Um item de legenda.
+/// Um item de legenda: o matiz da série, o nome do item e — quando faz
+/// sentido — o valor que a fatia/barra representa.
 class ChartLegendEntry {
-  const ChartLegendEntry({required this.label, required this.color});
+  const ChartLegendEntry({
+    required this.label,
+    required this.color,
+    this.value,
+  });
 
   final String label;
   final Color color;
+
+  /// Valor já formatado (`R$ 1,2 mil`, `320 un`). Opcional, mas recomendado:
+  /// é o que permite ler o gráfico sem depender só da cor.
+  final String? value;
 }
 
-/// Legenda horizontal que quebra em várias linhas.
+/// Legenda de identificação das séries.
 ///
-/// Marcador é um traço, não uma bolinha: lê melhor numa escala de cinza, onde
-/// tons próximos precisam de mais área para se distinguir.
+/// Marcador é um quadradinho preenchido: com matizes distintos, área cheia é o
+/// que deixa a cor legível — o traço fino da versão monocromática era pequeno
+/// demais para carregar hue.
+///
+/// Sempre presente quando há duas ou mais séries; o nome e o valor ao lado do
+/// marcador garantem que nenhuma informação dependa exclusivamente da cor.
 class ChartLegend extends StatelessWidget {
   const ChartLegend({super.key, required this.entries});
 
@@ -102,33 +115,47 @@ class ChartLegend extends StatelessWidget {
     final t = context.tokens;
 
     return Wrap(
-      spacing: AppSpacing.lg,
+      spacing: AppSpacing.md,
       runSpacing: AppSpacing.xs,
       children: entries.map((ChartLegendEntry e) {
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: AppSpacing.md,
-              height: AppSpacing.xxs,
-              decoration: BoxDecoration(
-                color: e.color,
-                borderRadius: AppRadii.round,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 140),
-              child: Text(
-                e.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.text.bodySmall!.copyWith(
-                  color: t.textSecondary,
+        return ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 200),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: AppSpacing.sm,
+                height: AppSpacing.sm,
+                decoration: BoxDecoration(
+                  color: e.color,
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AppSpacing.xxs),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  e.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.text.bodySmall!.copyWith(
+                    color: t.textSecondary,
+                  ),
+                ),
+              ),
+              if (e.value != null) ...<Widget>[
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  e.value!,
+                  style: context.text.bodySmall!.copyWith(
+                    color: t.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       }).toList(growable: false),
     );

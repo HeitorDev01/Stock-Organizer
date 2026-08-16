@@ -72,6 +72,7 @@ class TopProdutosChart extends StatelessWidget {
               (int i) => ChartLegendEntry(
                 label: topProdutos[i].key,
                 color: t.seriesAt(i),
+                value: formatCompactBRL(topProdutos[i].value),
               ),
             ),
           ),
@@ -82,7 +83,7 @@ class TopProdutosChart extends StatelessWidget {
                 PieChartData(
                   sections: sections,
                   centerSpaceRadius: AppSpacing.giant - AppSpacing.xl,
-                  // 2px de respiro: separa fatias de cinzas vizinhos.
+                  // 2px de respiro: separa fatias de matizes vizinhos.
                   sectionsSpace: 2,
                   borderData: FlBorderData(show: false),
                   pieTouchData: PieTouchData(enabled: true),

@@ -11,8 +11,10 @@ import '../widgets/ui/empty_state.dart';
 
 /// Lucro agregado por categoria.
 ///
-/// Barras chapadas em tons da rampa, sem gradiente: numa escala de cinza o
-/// degradê destruiria a comparação entre colunas.
+/// Barras chapadas, um matiz por categoria e sem gradiente: o degradê
+/// atrapalharia a comparação de altura entre colunas, que é o que o gráfico
+/// realmente mede. A cor aqui só identifica a categoria — quem informa o valor
+/// é a altura da barra, reforçada pela legenda abaixo.
 class LucroPorCategoriaChart extends StatelessWidget {
   const LucroPorCategoriaChart({super.key});
 
@@ -57,6 +59,16 @@ class LucroPorCategoriaChart extends StatelessWidget {
           title: 'Lucro por categoria',
           subtitle: '${categorias.length} '
               '${categorias.length == 1 ? "categoria" : "categorias"}',
+          legend: ChartLegend(
+            entries: List<ChartLegendEntry>.generate(
+              categorias.length,
+              (int i) => ChartLegendEntry(
+                label: categorias[i],
+                color: t.seriesAt(i),
+                value: formatCompactBRL(lucroPorCategoria[categorias[i]]!),
+              ),
+            ),
+          ),
           child: BarChart(
             BarChartData(
               maxY: maxY,

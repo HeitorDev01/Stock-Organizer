@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 /// RAMPA MONOCROMÁTICA
 ///
 /// Cinzas neutros puros (R=G=B) — qualquer desvio introduziria temperatura de
-/// cor, que é justamente o que a direção estética exclui.
+/// cor na *interface*. A cor vive só nos dados (ver [_Series]): fundo, bordas,
+/// texto e grade continuam neutros, então a única coisa colorida na tela é o
+/// que carrega informação.
 /// Só o arquivo de tema referencia estes valores; widgets usam [AppTokens].
 /// ---------------------------------------------------------------------------
 abstract final class _Ramp {
@@ -12,7 +14,6 @@ abstract final class _Ramp {
   static const Color ink800 = Color(0xFF141414);
   static const Color ink700 = Color(0xFF1C1C1C);
   static const Color ink600 = Color(0xFF262626);
-  static const Color ink500 = Color(0xFF333333);
   static const Color ink400 = Color(0xFF404040);
 
   static const Color grey600 = Color(0xFF525252);
@@ -27,6 +28,46 @@ abstract final class _Ramp {
   static const Color paper100 = Color(0xFFF4F4F4);
   static const Color paper50 = Color(0xFFFAFAFA);
   static const Color white = Color(0xFFFFFFFF);
+}
+
+/// ---------------------------------------------------------------------------
+/// PALETA CATEGÓRICA DOS GRÁFICOS
+///
+/// Oito matizes em ordem fixa. A **ordem é o mecanismo de segurança**, não
+/// enfeite: fatias e barras vizinhas nunca caem em matizes que colapsam sob
+/// daltonismo (protanopia/deuteranopia). Atribua sempre na sequência — nunca
+/// reordene por valor, senão a cor passa a significar "posição no ranking" em
+/// vez de "qual produto".
+///
+/// Os tons escuros não são uma inversão automática dos claros: são os mesmos
+/// oito matizes reescalonados para render contraste ≥ 3:1 sobre o card escuro.
+///
+/// Verificado com o validador de paleta (bandas de luminosidade e croma,
+/// separação sob daltonismo e contraste vs. superfície) contra
+/// `surface` #FFFFFF no claro e #141414 no escuro.
+/// ---------------------------------------------------------------------------
+abstract final class _Series {
+  static const List<Color> light = <Color>[
+    Color(0xFF2A78D6), // azul
+    Color(0xFFEB6834), // laranja
+    Color(0xFF1BAF7A), // água
+    Color(0xFFEDA100), // amarelo
+    Color(0xFFE87BA4), // magenta
+    Color(0xFF008300), // verde
+    Color(0xFF4A3AA7), // violeta
+    Color(0xFFE34948), // vermelho
+  ];
+
+  static const List<Color> dark = <Color>[
+    Color(0xFF3987E5),
+    Color(0xFFD95926),
+    Color(0xFF199E70),
+    Color(0xFFC98500),
+    Color(0xFFD55181),
+    Color(0xFF008300),
+    Color(0xFF9085E9),
+    Color(0xFFE66767),
+  ];
 }
 
 /// ---------------------------------------------------------------------------
@@ -110,10 +151,13 @@ class AppTokens extends ThemeExtension<AppTokens> {
   final Color iconSecondary;
   final Color iconInverse;
 
-  /// Série categórica dos gráficos, do mais forte ao mais fraco.
+  /// Matizes categóricos dos gráficos, em ordem fixa de atribuição.
+  ///
+  /// Identidade, não intensidade: a posição na lista diz *qual* item é, nunca
+  /// quanto ele vale. Consuma sempre por [seriesAt].
   final List<Color> chartSeries;
 
-  /// Traço de gráficos de linha.
+  /// Traço de gráficos de linha — série única, logo o primeiro matiz.
   final Color chartLine;
 
   /// Linha de grade — quase invisível, por design.
@@ -148,17 +192,11 @@ class AppTokens extends ThemeExtension<AppTokens> {
     iconPrimary: _Ramp.ink800,
     iconSecondary: _Ramp.grey400,
     iconInverse: _Ramp.paper50,
-    chartSeries: <Color>[
-      _Ramp.ink900,
-      _Ramp.ink500,
-      _Ramp.grey500,
-      _Ramp.grey300,
-      _Ramp.grey100,
-    ],
-    chartLine: _Ramp.ink900,
+    chartSeries: _Series.light,
+    chartLine: Color(0xFF2A78D6),
     chartGrid: _Ramp.paper300,
     chartAxisLabel: _Ramp.grey400,
-    chartFill: _Ramp.ink900,
+    chartFill: Color(0xFF2A78D6),
     chartDotFill: _Ramp.white,
     overlayScrim: Color(0x660A0A0A),
   );
@@ -182,17 +220,11 @@ class AppTokens extends ThemeExtension<AppTokens> {
     iconPrimary: _Ramp.paper100,
     iconSecondary: _Ramp.grey400,
     iconInverse: _Ramp.ink800,
-    chartSeries: <Color>[
-      _Ramp.paper50,
-      _Ramp.grey200,
-      _Ramp.grey400,
-      _Ramp.grey600,
-      _Ramp.ink500,
-    ],
-    chartLine: _Ramp.paper50,
+    chartSeries: _Series.dark,
+    chartLine: Color(0xFF3987E5),
     chartGrid: _Ramp.ink600,
     chartAxisLabel: _Ramp.grey400,
-    chartFill: _Ramp.paper50,
+    chartFill: Color(0xFF3987E5),
     chartDotFill: _Ramp.ink800,
     overlayScrim: Color(0x99000000),
   );

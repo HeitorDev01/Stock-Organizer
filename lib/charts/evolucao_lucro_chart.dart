@@ -11,8 +11,9 @@ import '../widgets/ui/empty_state.dart';
 
 /// Projeção de lucro para os próximos 6 meses.
 ///
-/// Traço de 1.5px, sem gradiente colorido e sem grade vertical — a linha é a
-/// informação, tudo o mais recua.
+/// Traço fino no primeiro matiz da paleta, sem grade vertical — a linha é a
+/// informação, tudo o mais recua. Série única, então não leva legenda: o
+/// título já diz o que a linha é.
 class EvolucaoLucroChart extends StatelessWidget {
   const EvolucaoLucroChart({super.key});
 
